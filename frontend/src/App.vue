@@ -1,15 +1,13 @@
 <template>
   <div class="quant-os">
-    <div class="glow-bg"></div>
-
-    <div class="mobile-header">
+    <div class="mobile-header" v-if="isMobile">
       <div class="brand-area">
         <span class="logo-icon">💠</span> QUANT <span class="highlight">PRO</span>
       </div>
       <div class="connection-status" :class="loadingStocks ? 'blink' : 'online'"></div>
     </div>
 
-    <aside class="sidebar glass-panel" v-show="!isMobile || activeTab === 'stocks'">
+    <aside class="sidebar" v-show="!isMobile || activeTab === 'stocks'">
       <div class="panel-title-mobile" v-if="isMobile">主力优选池</div>
       
       <div class="control-panel" v-if="!isMobile">
@@ -19,15 +17,14 @@
         </button>
       </div>
 
-      <button v-if="isMobile && activeTab === 'stocks'" class="mobile-scan-btn" @click="scanMarket">
-        {{ loadingStocks ? '扫描中...' : '🚀 开始扫描' }}
-      </button>
-
-      <div class="stock-list-wrapper custom-scroll">
+      <div class="stock-list-wrapper">
         <div class="list-header" v-if="!isMobile">TOP 15 关注池</div>
+        
         <div v-if="stocks.length === 0 && !loadingStocks" class="empty-list">
-          暂无数据，请点击扫描
+          <div class="empty-icon">📡</div>
+          <p>暂无数据，请点击扫描</p>
         </div>
+
         <div 
           v-for="(stock, index) in stocks" 
           :key="stock.code"
@@ -52,12 +49,16 @@
           </div>
         </div>
       </div>
+
+      <button v-if="isMobile && activeTab === 'stocks'" class="mobile-scan-btn" @click="scanMarket" :disabled="loadingStocks">
+        {{ loadingStocks ? '扫描中...' : '🚀 开始扫描' }}
+      </button>
     </aside>
 
     <section class="market-center" v-show="!isMobile || activeTab === 'market'">
       <div class="panel-title-mobile" v-if="isMobile">市场全景</div>
       
-      <div class="market-dash glass-panel">
+      <div class="market-dash">
         <div class="dash-title">📊 上证指数</div>
         <div class="index-row">
           <div class="index-main">
@@ -70,17 +71,20 @@
           </div>
           <div class="breadth-chart">
             <div class="breadth-bar">
-              <div class="up-bar" :style="{flex: marketInfo.index.up || 1}">涨 {{ marketInfo.index.up }}</div>
-              <div class="down-bar" :style="{flex: marketInfo.index.down || 1}">跌 {{ marketInfo.index.down }}</div>
+              <div class="up-bar" :style="{flex: marketInfo.index.up || 1}"></div>
+              <div class="down-bar" :style="{flex: marketInfo.index.down || 1}"></div>
             </div>
-            <div class="market-mood">情绪：<span class="mood-tag">{{ marketInfo.index.mood }}</span></div>
+            <div class="market-mood">
+              涨: {{ marketInfo.index.up }} &nbsp; 跌: {{ marketInfo.index.down }}
+              <span class="mood-tag">{{ marketInfo.index.mood }}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div class="sector-panel glass-panel">
+      <div class="sector-panel">
         <div class="panel-head">🔥 热门板块</div>
-        <div class="sector-list custom-scroll">
+        <div class="sector-list">
           <div v-for="(sec, i) in marketInfo.hot_sectors" :key="i" class="sector-row">
             <div class="sec-info"><div class="sec-name">{{ sec.name }}</div></div>
             <div class="sec-change mono text-red">+{{ sec.change }}%</div>
@@ -88,9 +92,9 @@
         </div>
       </div>
 
-      <div class="sector-panel glass-panel">
+      <div class="sector-panel">
         <div class="panel-head">💰 资金流向 (亿)</div>
-        <div class="sector-list custom-scroll">
+        <div class="sector-list">
           <div v-for="(sec, i) in marketInfo.flow_sectors" :key="i" class="sector-row">
             <div class="sec-name">{{ sec.name }}</div>
             <div class="sec-flow mono text-red">+{{ sec.inflow }}</div>
@@ -102,13 +106,13 @@
     <main class="detail-deck" v-show="!isMobile || activeTab === 'analyze'">
       <div class="panel-title-mobile" v-if="isMobile">深度分析</div>
 
-      <div v-if="!currentStock && starStock" class="star-view glass-panel">
+      <div v-if="!currentStock && starStock" class="star-view">
         <div class="star-header">
           <div class="star-icon">🌟</div>
           <div class="star-title">明日金股推荐</div>
           <div class="star-name">{{ starStock.name }} <span class="mono">{{ starStock.code }}</span></div>
         </div>
-        <div class="star-body custom-scroll">
+        <div class="star-body">
           <div class="tech-dashboard">
             <div class="tech-item">
               <div class="ti-label">MACD</div>
@@ -128,19 +132,19 @@
           <div class="ai-report-box">
              <div v-if="starReport" class="ai-text markdown-body">{{ starReport }}</div>
              <div v-else class="ai-placeholder">
-               该股综合评分第一。<br>点击下方生成 AI 研报。
+               该股综合评分第一。<br>点击下方生成 AI 决胜研报。
              </div>
           </div>
         </div>
         <div class="star-footer">
           <button class="gold-btn" @click="generateStarReport" :disabled="analyzing">
-            {{ analyzing ? 'AI思考中...' : '⚡️ 生成决胜研报' }}
+            {{ analyzing ? 'AI 深度思考中...' : '⚡️ 生成决胜研报' }}
           </button>
         </div>
       </div>
 
       <div v-else-if="currentStock" class="stock-detail">
-        <div class="stock-header glass-panel">
+        <div class="stock-header">
           <div class="sh-top">
             <span class="sh-name">{{ currentStock.name }}</span>
             <span class="sh-code mono">{{ currentStock.code }}</span>
@@ -156,19 +160,19 @@
           </div>
         </div>
 
-        <div class="ai-box glass-panel">
+        <div class="ai-box">
           <div class="ai-head">
             <div class="ai-title">AI 短线策略</div>
             <button class="ai-btn" @click="triggerAI" :disabled="analyzing">{{ analyzing ? '...' : '分析' }}</button>
           </div>
-          <div class="ai-body custom-scroll">
+          <div class="ai-body">
             <div v-if="aiCache[currentStock.code]" class="ai-text markdown-body">{{ aiCache[currentStock.code] }}</div>
-            <div v-else class="ai-placeholder">点击分析获取操作建议...</div>
+            <div v-else class="ai-placeholder">点击右上角分析获取操作建议...</div>
           </div>
         </div>
       </div>
 
-      <div v-else class="empty-deck glass-panel">
+      <div v-else class="empty-deck">
         <div class="icon">🎯</div>
         <p>请先在 [选股] 页点击股票</p>
       </div>
@@ -197,13 +201,14 @@ import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 // ==========================================
-// ⚠️ 重要：部署到 Netlify 前，请修改这里！
-// 换成你在 Render 获得的后端网址，例如：
-// const API = 'https://wo-de-niu-gu.onrender.com/api'
-const API = 'http://localhost:5001/api' 
+// 🔴 请把下面这行改成你的 Render 网址！例如：
+// const API = 'https://你的项目名.onrender.com/api'
+const API = 'https://wo-de-niu-gu.onrender.com/api' 
 // ==========================================
 
-const api = axios.create({ timeout: 60000 })
+// 🔴 关键修复：超时时间改为 120秒，防止 Render 冷启动报错
+const api = axios.create({ timeout: 120000 })
+
 const stocks = ref([])
 const marketInfo = ref({ index: { price: "0.00", change: 0, up: 1, down: 1, mood: "Init" }, hot_sectors: [], flow_sectors: [] })
 const currentStock = ref(null)
@@ -236,22 +241,30 @@ const scanMarket = async () => {
   loadingStocks.value = true
   stocks.value = []
   starReport.value = ''
+  
+  if (isMobile.value) {
+     ElMessage.info({
+        message: "正在唤醒云服务器，首次扫描约需 1 分钟，请耐心等待...",
+        duration: 5000
+     })
+  }
+
   try {
     const res = await api.get(`${API}/smart_pick`)
     if(res.data.code === 200) {
       stocks.value = res.data.data
       if(isMobile.value) {
         ElMessage.success("扫描完成")
-        activeTab.value = 'analyze' // 扫完直接看金股
+        activeTab.value = 'stocks' // 扫完留在选股页
       }
     }
-  } catch(e) { ElMessage.error("扫描超时") }
+  } catch(e) { ElMessage.error("扫描失败，请稍后重试") }
   finally { loadingStocks.value = false }
 }
 
 const handleStockClick = (stock) => { 
   currentStock.value = stock
-  if(isMobile.value) activeTab.value = 'analyze' // 手机上点击股票自动跳到分析页
+  if(isMobile.value) activeTab.value = 'analyze' 
 }
 
 const backToGold = () => { currentStock.value = null }
@@ -261,7 +274,7 @@ const triggerAI = async () => {
   try {
     const res = await api.post(`${API}/analyze`, currentStock.value)
     if (res.data.code === 200) aiCache.value[currentStock.value.code] = res.data.data
-  } catch(e) { aiCache.value[currentStock.value.code] = "Error: " + e.message } 
+  } catch(e) { aiCache.value[currentStock.value.code] = "AI 服务繁忙，请稍后重试。" } 
   finally { analyzing.value = false }
 }
 
@@ -271,7 +284,7 @@ const generateStarReport = async () => {
   try {
     const res = await api.post(`${API}/analyze_star`, starStock.value)
     if (res.data.code === 200) starReport.value = res.data.data
-  } catch(e) { starReport.value = "Error: " + e.message } 
+  } catch(e) { starReport.value = "AI 服务繁忙，请稍后重试。" } 
   finally { analyzing.value = false }
 }
 
@@ -279,112 +292,185 @@ const getColor = (v) => parseFloat(v) >= 0 ? 'text-red' : 'text-green'
 </script>
 
 <style>
-/* 全局变量 */
+/* Quant OS V18 - Mobile Pro Theme 
+   适配 iPhone 14 Pro / OLED 屏幕 
+*/
+
 :root {
-  --bg-dark: #000000; /* iPhone OLED 纯黑 */
-  --bg-panel: #111111;
+  --bg-dark: #000000;
+  --panel-bg: #111111;
   --text-main: #ffffff;
-  --text-sub: #888888;
-  --neon-red: #ff3b30; /* Apple Red */
-  --neon-green: #34c759; /* Apple Green */
-  --accent: #0a84ff; /* Apple Blue */
-  --gold: #ffd60a;
-  --border: 1px solid rgba(255,255,255,0.12);
-  --glass: rgba(28, 28, 30, 0.85); /* iOS Glass */
-  --nav-height: 60px; /* 底部导航高度 */
+  --text-sub: #86868b;
+  --accent: #0A84FF; /* iOS Blue */
+  --danger: #FF453A; /* iOS Red */
+  --success: #30D158; /* iOS Green */
+  --gold: #FFD60A;
+  --nav-height: 84px;
 }
 
-body { margin: 0; background: var(--bg-dark); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
+body {
+  margin: 0;
+  background: var(--bg-dark);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
 
-/* 桌面布局 */
-.quant-os { display: flex; height: 100vh; width: 100vw; gap: 12px; padding: 12px; box-sizing: border-box; background: radial-gradient(circle at top left, #1c1c1e 0%, #000 100%); }
-.glass-panel { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+/* 布局容器：处理安全区 */
+.quant-os {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  background: black;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
 
-/* 通用字体颜色 */
-.text-red { color: var(--neon-red); } 
-.text-green { color: var(--neon-green); } 
-.text-blue { color: var(--accent); }
-.mono { font-family: "SF Mono", "Menlo", monospace; letter-spacing: -0.5px; }
+/* 手机端顶部栏 */
+.mobile-header {
+  height: 44px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 0.5px solid #222;
+  z-index: 50;
+  flex-shrink: 0;
+}
+.brand-area { font-size: 17px; font-weight: 700; }
+.highlight { color: var(--accent); }
+.connection-status { width: 6px; height: 6px; border-radius: 50%; background: #333; }
+.connection-status.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.connection-status.blink { background: var(--gold); animation: blink 1s infinite; }
 
-/* 侧边栏 & 列表 */
-.sidebar { width: 300px; }
-.brand-area { padding: 16px; font-weight: 800; border-bottom: var(--border); font-size: 16px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-.control-panel { padding: 12px; }
-.cyber-btn { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; font-weight: 600; cursor: pointer; border-radius: 8px; font-size: 14px; }
-.stock-list-wrapper { flex: 1; overflow-y: auto; padding: 8px; }
-.ticker-card { background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
-.ticker-card.active { border-color: var(--accent); background: rgba(10, 132, 255, 0.15); }
-.gold-card { border: 1px solid rgba(255, 214, 10, 0.4); background: linear-gradient(135deg, rgba(255,214,10,0.1), transparent); }
-.ticker-row { display: flex; justify-content: space-between; align-items: center; }
-.ticker-name { font-weight: 600; font-size: 15px; }
-.ticker-price { font-weight: 700; font-size: 15px; }
-.sub { margin-top: 4px; font-size: 12px; opacity: 0.8; }
-.tag { font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-top: 6px; display: inline-block; margin-right: 4px; font-weight: 600; }
+/* 核心内容区 */
+.sidebar, .market-center, .detail-deck {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  padding-bottom: 100px;
+}
+
+/* 电脑端才显示的元素 */
+@media (min-width: 768px) {
+  .quant-os {
+    flex-direction: row;
+    padding: 12px;
+    gap: 12px;
+    background: radial-gradient(circle at top left, #1c1c1e 0%, #000 100%);
+  }
+  .sidebar, .market-center, .detail-deck {
+    height: 100%;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(28, 28, 30, 0.6);
+    border: 1px solid rgba(255,255,255,0.1);
+    backdrop-filter: blur(20px);
+  }
+  .sidebar { width: 300px; flex: none; }
+  .detail-deck { width: 360px; flex: none; }
+  .mobile-header, .mobile-nav, .mobile-scan-btn, .panel-title-mobile { display: none !important; }
+}
+
+/* 卡片样式 */
+.ticker-card, .market-dash, .sector-panel, .star-view, .stock-header, .ai-box {
+  background: #1C1C1E;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* 列表项 */
+.ticker-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.ticker-name { font-size: 16px; font-weight: 600; }
+.ticker-price { font-size: 16px; font-weight: 600; font-family: "SF Mono", monospace; }
+.sub { opacity: 0.6; font-size: 13px; }
+
+/* 标签 */
+.tag { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 600; margin-right: 6px; display: inline-block; }
 .tag.gold { background: var(--gold); color: black; }
-.tag.hot { background: rgba(255, 59, 48, 0.2); color: var(--neon-red); }
-.tag.trend { border: 1px solid var(--accent); color: var(--accent); }
+.tag.hot { background: rgba(255, 69, 58, 0.2); color: var(--danger); }
+.tag.trend { background: rgba(10, 132, 255, 0.2); color: var(--accent); }
 
-/* 中间区域 */
-.market-center { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.market-dash, .sector-panel { padding: 16px; flex: 1; min-height: 160px; }
-.dash-title, .panel-head { font-size: 13px; color: var(--text-sub); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
-.idx-val { font-size: 36px; font-weight: 800; letter-spacing: -1px; }
-.idx-change { font-size: 14px; margin-top: 4px; font-weight: 600; }
-.breadth-bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; display: flex; margin-top: 15px; }
-.up-bar { background: var(--neon-red); } .down-bar { background: var(--neon-green); }
-.sector-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+/* 市场全景 */
+.idx-val { font-size: 36px; font-weight: 700; letter-spacing: -1px; }
+.breadth-bar { height: 6px; border-radius: 3px; background: #333; overflow: hidden; display: flex; margin: 12px 0; }
+.up-bar { background: var(--danger); } .down-bar { background: var(--success); }
+.market-mood { font-size: 12px; color: var(--text-sub); display: flex; justify-content: space-between; }
+.panel-title-mobile { font-size: 22px; font-weight: 800; padding: 10px 0 16px; color: white; }
 
-/* 右侧详情 */
-.detail-deck { width: 360px; }
-.star-view { height: 100%; display: flex; flex-direction: column; }
-.star-header { padding: 30px 20px; text-align: center; border-bottom: var(--border); }
+/* 底部导航 */
+.mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: var(--nav-height);
+  background: rgba(10, 10, 10, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid #333;
+  display: flex;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  height: 50px;
+  margin-top: 5px;
+}
+.nav-item.active { color: var(--accent); }
+.nav-icon { font-size: 22px; margin-bottom: 2px; }
+.nav-text { font-size: 10px; font-weight: 500; }
+
+/* 悬浮按钮 */
+.mobile-scan-btn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 14px 24px;
+  border-radius: 40px;
+  font-size: 16px;
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(10, 132, 255, 0.4);
+  z-index: 90;
+}
+.mobile-scan-btn:disabled { opacity: 0.7; transform: scale(0.98); }
+
+/* 详情页 */
+.star-header { text-align: center; padding: 20px; border-bottom: 1px solid #333; margin-bottom: 16px; }
 .star-icon { font-size: 48px; margin-bottom: 10px; display: block; }
-.star-name { font-size: 28px; font-weight: 800; }
-.star-body { flex: 1; padding: 20px; overflow-y: auto; }
-.tech-dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; }
+.star-name { font-size: 24px; font-weight: 800; }
+.tech-dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; background: rgba(255,255,255,0.03); padding: 12px; border-radius: 8px; }
 .tech-item { text-align: center; }
 .ti-label { font-size: 11px; color: var(--text-sub); }
-.ti-val { font-size: 16px; font-weight: 700; margin-top: 4px; }
-.gold-btn { width: 100%; background: var(--gold); color: black; border: none; padding: 16px; font-weight: 700; border-radius: 12px; font-size: 16px; cursor: pointer; }
-.ai-text { font-size: 14px; line-height: 1.6; color: #ddd; }
+.ti-val { font-size: 15px; font-weight: 700; margin-top: 4px; }
+.gold-btn { width: 100%; background: var(--gold); color: black; border: none; padding: 14px; font-weight: 700; border-radius: 10px; font-size: 16px; }
+.ai-text { font-size: 15px; line-height: 1.6; color: #eee; }
+.empty-list { text-align: center; padding-top: 60px; color: var(--text-sub); }
+.empty-icon { font-size: 40px; margin-bottom: 10px; }
 
-/* 📱 移动端适配 (Media Queries) */
-.mobile-nav, .mobile-header, .mobile-scan-btn { display: none; }
+/* 颜色类 */
+.text-red { color: var(--danger); }
+.text-green { color: var(--success); }
+.text-blue { color: var(--accent); }
+.mono { font-family: "SF Mono", monospace; }
 
-@media (max-width: 768px) {
-  .quant-os { padding: 0; padding-bottom: var(--nav-height); background: #000; }
-  .glass-panel { border-radius: 0; border: none; background: #000; border-bottom: 1px solid #222; }
-  
-  /* 隐藏电脑端不需要的 */
-  .brand-area { display: none; } 
-  .list-header { display: none; }
-
-  /* 手机顶部 */
-  .mobile-header { display: flex; justify-content: space-between; align-items: center; height: 44px; padding: 0 16px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #222; padding-top: env(safe-area-inset-top); }
-  .mobile-header .brand-area { display: block; border: none; padding: 0; font-size: 16px; }
-  .connection-status { width: 8px; height: 8px; border-radius: 50%; background: #333; }
-  .connection-status.online { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
-  
-  /* 布局改为单栏 */
-  .sidebar, .market-center, .detail-deck { width: 100%; height: 100%; overflow-y: auto; padding-top: 10px; }
-  
-  /* 手机端样式微调 */
-  .ticker-card { margin: 0 12px 10px; padding: 16px; }
-  .market-dash, .sector-panel { margin-bottom: 10px; min-height: auto; }
-  .panel-title-mobile { font-size: 20px; font-weight: 800; padding: 10px 16px; color: var(--text-main); }
-  
-  /* 悬浮扫描按钮 */
-  .mobile-scan-btn { display: block; position: fixed; bottom: 80px; right: 20px; background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(10, 132, 255, 0.4); z-index: 50; }
-
-  /* 底部导航栏 */
-  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height); background: rgba(20,20,20,0.95); backdrop-filter: blur(20px); border-top: 1px solid #333; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
-  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #666; transition: 0.2s; }
-  .nav-item.active { color: var(--accent); }
-  .nav-icon { font-size: 20px; margin-bottom: 2px; }
-  .nav-text { font-size: 10px; font-weight: 500; }
-  
-  /* 详情页全屏覆盖 */
-  .stock-detail, .star-view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 60; padding-top: env(safe-area-inset-top); padding-bottom: 80px; overflow-y: auto; }
-  .close-btn { font-size: 24px; padding: 10px; }
-}
+@keyframes blink { 50% { opacity: 0.5; } }
 </style>
