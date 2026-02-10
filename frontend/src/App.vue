@@ -2,20 +2,32 @@
   <div class="quant-os">
     <div class="glow-bg"></div>
 
-    <aside class="sidebar glass-panel">
+    <div class="mobile-header">
       <div class="brand-area">
-        <div class="logo-icon">💠</div>
-        <div class="app-name">短线 <span class="highlight">实战</span> V18</div>
+        <span class="logo-icon">💠</span> QUANT <span class="highlight">PRO</span>
       </div>
-      <div class="control-panel">
+      <div class="connection-status" :class="loadingStocks ? 'blink' : 'online'"></div>
+    </div>
+
+    <aside class="sidebar glass-panel" v-show="!isMobile || activeTab === 'stocks'">
+      <div class="panel-title-mobile" v-if="isMobile">主力优选池</div>
+      
+      <div class="control-panel" v-if="!isMobile">
         <button class="cyber-btn" @click="scanMarket" :disabled="loadingStocks">
           <span v-if="loadingStocks" class="spin">⟳</span>
           <span v-else>🚀 扫描全市场</span>
         </button>
       </div>
+
+      <button v-if="isMobile && activeTab === 'stocks'" class="mobile-scan-btn" @click="scanMarket">
+        {{ loadingStocks ? '扫描中...' : '🚀 开始扫描' }}
+      </button>
+
       <div class="stock-list-wrapper custom-scroll">
-        <div class="list-header">主力优选池</div>
-        <div v-if="stocks.length === 0 && !loadingStocks" class="empty-list">请点击上方按钮扫描</div>
+        <div class="list-header" v-if="!isMobile">TOP 15 关注池</div>
+        <div v-if="stocks.length === 0 && !loadingStocks" class="empty-list">
+          暂无数据，请点击扫描
+        </div>
         <div 
           v-for="(stock, index) in stocks" 
           :key="stock.code"
@@ -42,9 +54,11 @@
       </div>
     </aside>
 
-    <section class="market-center">
+    <section class="market-center" v-show="!isMobile || activeTab === 'market'">
+      <div class="panel-title-mobile" v-if="isMobile">市场全景</div>
+      
       <div class="market-dash glass-panel">
-        <div class="dash-title">📊 市场全景 (上证)</div>
+        <div class="dash-title">📊 上证指数</div>
         <div class="index-row">
           <div class="index-main">
             <div class="idx-val mono" :class="getColor(marketInfo.index.change)">
@@ -85,7 +99,9 @@
       </div>
     </section>
 
-    <main class="detail-deck">
+    <main class="detail-deck" v-show="!isMobile || activeTab === 'analyze'">
+      <div class="panel-title-mobile" v-if="isMobile">深度分析</div>
+
       <div v-if="!currentStock && starStock" class="star-view glass-panel">
         <div class="star-header">
           <div class="star-icon">🌟</div>
@@ -99,28 +115,26 @@
               <div class="ti-val" :class="(starStock.tech?.macd || 0) > 0 ? 'text-red' : 'text-green'">
                 {{ starStock.tech?.macd || '-' }}
               </div>
-              <div class="ti-sub">{{ starStock.tech?.macd_signal || '-' }}</div>
             </div>
             <div class="tech-item">
-              <div class="ti-label">RSI (6)</div>
+              <div class="ti-label">RSI</div>
               <div class="ti-val text-blue">{{ starStock.tech?.rsi || '-' }}</div>
-              <div class="ti-sub">{{ starStock.tech?.rsi_signal || '-' }}</div>
             </div>
             <div class="tech-item">
-              <div class="ti-label">主力净流</div>
-              <div class="ti-val text-red">{{ starStock.net_inflow }}万</div>
+              <div class="ti-label">资金</div>
+              <div class="ti-val text-red">{{ starStock.net_inflow }}</div>
             </div>
           </div>
           <div class="ai-report-box">
              <div v-if="starReport" class="ai-text markdown-body">{{ starReport }}</div>
              <div v-else class="ai-placeholder">
-               该股综合评分第一。<br>点击下方生成《决胜研报》。
+               该股综合评分第一。<br>点击下方生成 AI 研报。
              </div>
           </div>
         </div>
         <div class="star-footer">
           <button class="gold-btn" @click="generateStarReport" :disabled="analyzing">
-            {{ analyzing ? '研报生成中(约30s)...' : '⚡️ 生成决胜研报' }}
+            {{ analyzing ? 'AI思考中...' : '⚡️ 生成决胜研报' }}
           </button>
         </div>
       </div>
@@ -130,7 +144,7 @@
           <div class="sh-top">
             <span class="sh-name">{{ currentStock.name }}</span>
             <span class="sh-code mono">{{ currentStock.code }}</span>
-            <button class="close-btn" @click="currentStock = null">✕</button>
+            <button class="close-btn" @click="backToGold">✕</button>
           </div>
           <div class="sh-data">
             <div class="sh-price mono" :class="getColor(currentStock.change)">{{ currentStock.price }}</div>
@@ -139,44 +153,75 @@
           <div class="tech-row">
              <span class="tech-badge">MA5: {{ currentStock.tech?.ma5 || '-' }}</span>
              <span class="tech-badge">MACD: {{ currentStock.tech?.macd || '-' }}</span>
-             <span class="tech-badge">RSI: {{ currentStock.tech?.rsi || '-' }}</span>
           </div>
         </div>
 
         <div class="ai-box glass-panel">
           <div class="ai-head">
-            <div class="ai-title">AI 策略分析</div>
-            <button class="ai-btn" @click="triggerAI" :disabled="analyzing">{{ analyzing ? '...' : '开始分析' }}</button>
+            <div class="ai-title">AI 短线策略</div>
+            <button class="ai-btn" @click="triggerAI" :disabled="analyzing">{{ analyzing ? '...' : '分析' }}</button>
           </div>
           <div class="ai-body custom-scroll">
             <div v-if="aiCache[currentStock.code]" class="ai-text markdown-body">{{ aiCache[currentStock.code] }}</div>
-            <div v-else class="ai-placeholder">点击右上角按钮进行分析...</div>
+            <div v-else class="ai-placeholder">点击分析获取操作建议...</div>
           </div>
         </div>
       </div>
 
       <div v-else class="empty-deck glass-panel">
         <div class="icon">🎯</div>
-        <p>数据待加载</p>
+        <p>请先在 [选股] 页点击股票</p>
       </div>
     </main>
+
+    <nav class="mobile-nav" v-if="isMobile">
+      <div class="nav-item" :class="{active: activeTab === 'market'}" @click="activeTab = 'market'">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">市场</span>
+      </div>
+      <div class="nav-item" :class="{active: activeTab === 'stocks'}" @click="activeTab = 'stocks'">
+        <span class="nav-icon">🚀</span>
+        <span class="nav-text">选股</span>
+      </div>
+      <div class="nav-item" :class="{active: activeTab === 'analyze'}" @click="activeTab = 'analyze'">
+        <span class="nav-icon">🧠</span>
+        <span class="nav-text">研报</span>
+      </div>
+    </nav>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// ==========================================
+// ⚠️ 重要：部署到 Netlify 前，请修改这里！
+// 换成你在 Render 获得的后端网址，例如：
+// const API = 'https://wo-de-niu-gu.onrender.com/api'
+const API = 'http://localhost:5001/api' 
+// ==========================================
+
+const api = axios.create({ timeout: 60000 })
 const stocks = ref([])
-const marketInfo = ref({ index: { price: "0.00", change: 0, up: 1, down: 1, mood: "加载中" }, hot_sectors: [], flow_sectors: [] })
+const marketInfo = ref({ index: { price: "0.00", change: 0, up: 1, down: 1, mood: "Init" }, hot_sectors: [], flow_sectors: [] })
 const currentStock = ref(null)
 const loadingStocks = ref(false)
 const analyzing = ref(false)
 const aiCache = ref({})
 const starReport = ref('')
-const API = 'http://localhost:5001/api'
-const api = axios.create({ timeout: 60000 }) 
+
+// 手机端适配逻辑
+const isMobile = ref(window.innerWidth < 768)
+const activeTab = ref('market') // 默认显示市场
+
+const updateLayout = () => { isMobile.value = window.innerWidth < 768 }
+onMounted(() => {
+  window.addEventListener('resize', updateLayout)
+  fetchMarket()
+})
+onUnmounted(() => window.removeEventListener('resize', updateLayout))
 
 const starStock = computed(() => stocks.value.length > 0 ? stocks.value[0] : null)
 
@@ -193,126 +238,153 @@ const scanMarket = async () => {
   starReport.value = ''
   try {
     const res = await api.get(`${API}/smart_pick`)
-    if(res.data.code === 200) stocks.value = res.data.data
+    if(res.data.code === 200) {
+      stocks.value = res.data.data
+      if(isMobile.value) {
+        ElMessage.success("扫描完成")
+        activeTab.value = 'analyze' // 扫完直接看金股
+      }
+    }
   } catch(e) { ElMessage.error("扫描超时") }
   finally { loadingStocks.value = false }
 }
 
-const handleStockClick = (stock) => { currentStock.value = stock }
+const handleStockClick = (stock) => { 
+  currentStock.value = stock
+  if(isMobile.value) activeTab.value = 'analyze' // 手机上点击股票自动跳到分析页
+}
+
+const backToGold = () => { currentStock.value = null }
+
 const triggerAI = async () => {
   analyzing.value = true
   try {
     const res = await api.post(`${API}/analyze`, currentStock.value)
     if (res.data.code === 200) aiCache.value[currentStock.value.code] = res.data.data
-  } catch(e) { 
-    ElMessage.error("分析失败") 
-    aiCache.value[currentStock.value.code] = "AI 服务繁忙，请稍后再试。"
-  } finally { analyzing.value = false }
+  } catch(e) { aiCache.value[currentStock.value.code] = "Error: " + e.message } 
+  finally { analyzing.value = false }
 }
+
 const generateStarReport = async () => {
   if (!starStock.value) return
   analyzing.value = true
   try {
     const res = await api.post(`${API}/analyze_star`, starStock.value)
     if (res.data.code === 200) starReport.value = res.data.data
-  } catch(e) { 
-    ElMessage.error("分析失败") 
-    starReport.value = "AI 服务繁忙，请检查 API Key 或网络连接。"
-  } finally { analyzing.value = false }
+  } catch(e) { starReport.value = "Error: " + e.message } 
+  finally { analyzing.value = false }
 }
-const getColor = (v) => parseFloat(v) >= 0 ? 'text-red' : 'text-green'
 
-onMounted(() => fetchMarket())
+const getColor = (v) => parseFloat(v) >= 0 ? 'text-red' : 'text-green'
 </script>
 
 <style>
-/* CSS 保持不变，请确保包含之前的 CSS 代码，否则界面会乱 */
+/* 全局变量 */
 :root {
-  --bg-dark: #0f1115;
-  --bg-panel: #161b22;
-  --text-main: #e6edf3;
-  --text-sub: #8b949e;
-  --neon-red: #ff4d4f;
-  --neon-green: #2ecc71;
-  --accent: #2f81f7;
-  --gold: #ffd700;
-  --border: 1px solid rgba(255,255,255,0.1);
-  --glass: rgba(22, 27, 34, 0.95);
-  --font-mono: "SF Mono", "Consolas", monospace;
+  --bg-dark: #000000; /* iPhone OLED 纯黑 */
+  --bg-panel: #111111;
+  --text-main: #ffffff;
+  --text-sub: #888888;
+  --neon-red: #ff3b30; /* Apple Red */
+  --neon-green: #34c759; /* Apple Green */
+  --accent: #0a84ff; /* Apple Blue */
+  --gold: #ffd60a;
+  --border: 1px solid rgba(255,255,255,0.12);
+  --glass: rgba(28, 28, 30, 0.85); /* iOS Glass */
+  --nav-height: 60px; /* 底部导航高度 */
 }
-body { margin: 0; background: var(--bg-dark); color: var(--text-main); font-family: -apple-system, sans-serif; overflow: hidden; }
-.quant-os { display: flex; height: 100vh; width: 100vw; gap: 12px; padding: 12px; box-sizing: border-box; background: radial-gradient(circle at top left, #1a202c 0%, #0d1117 100%); }
-.glass-panel { background: var(--glass); backdrop-filter: blur(12px); border: var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: flex; flex-direction: column; }
-.mono { font-family: var(--font-mono); }
-.text-red { color: var(--neon-red); } .text-green { color: var(--neon-green); } .text-blue { color: var(--accent); }
 
-/* Sidebar */
-.sidebar { width: 280px; }
-.brand-area { padding: 16px; font-weight: 800; border-bottom: var(--border); display: flex; gap: 8px; }
+body { margin: 0; background: var(--bg-dark); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
+
+/* 桌面布局 */
+.quant-os { display: flex; height: 100vh; width: 100vw; gap: 12px; padding: 12px; box-sizing: border-box; background: radial-gradient(circle at top left, #1c1c1e 0%, #000 100%); }
+.glass-panel { background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+
+/* 通用字体颜色 */
+.text-red { color: var(--neon-red); } 
+.text-green { color: var(--neon-green); } 
+.text-blue { color: var(--accent); }
+.mono { font-family: "SF Mono", "Menlo", monospace; letter-spacing: -0.5px; }
+
+/* 侧边栏 & 列表 */
+.sidebar { width: 300px; }
+.brand-area { padding: 16px; font-weight: 800; border-bottom: var(--border); font-size: 16px; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
 .control-panel { padding: 12px; }
-.cyber-btn { width: 100%; background: var(--accent); color: white; border: none; padding: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; }
+.cyber-btn { width: 100%; background: var(--accent); color: white; border: none; padding: 12px; font-weight: 600; cursor: pointer; border-radius: 8px; font-size: 14px; }
 .stock-list-wrapper { flex: 1; overflow-y: auto; padding: 8px; }
-.list-header { font-size: 10px; color: var(--text-sub); margin-bottom: 8px; }
-.ticker-card { background: rgba(255,255,255,0.03); padding: 10px; margin-bottom: 6px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; }
-.ticker-card.active { border-color: var(--accent); background: rgba(47, 129, 247, 0.1); }
-.gold-card { border: 1px solid rgba(255, 215, 0, 0.3); background: linear-gradient(45deg, rgba(255,215,0,0.05), transparent); }
-.ticker-row { display: flex; justify-content: space-between; }
-.ticker-name { font-weight: bold; font-size: 13px; }
-.tag { font-size: 9px; padding: 2px 4px; border-radius: 2px; margin-top: 4px; display: inline-block; margin-right: 4px; }
-.tag.gold { background: var(--gold); color: black; font-weight: bold; }
-.tag.hot { background: rgba(255, 77, 79, 0.2); color: var(--neon-red); }
-.tag.normal { background: rgba(47, 129, 247, 0.2); color: var(--accent); }
-.tag.trend { background: rgba(47, 129, 247, 0.1); border: 1px solid var(--accent); color: var(--accent); }
+.ticker-card { background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 8px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: 0.2s; }
+.ticker-card.active { border-color: var(--accent); background: rgba(10, 132, 255, 0.15); }
+.gold-card { border: 1px solid rgba(255, 214, 10, 0.4); background: linear-gradient(135deg, rgba(255,214,10,0.1), transparent); }
+.ticker-row { display: flex; justify-content: space-between; align-items: center; }
+.ticker-name { font-weight: 600; font-size: 15px; }
+.ticker-price { font-weight: 700; font-size: 15px; }
+.sub { margin-top: 4px; font-size: 12px; opacity: 0.8; }
+.tag { font-size: 10px; padding: 3px 6px; border-radius: 4px; margin-top: 6px; display: inline-block; margin-right: 4px; font-weight: 600; }
+.tag.gold { background: var(--gold); color: black; }
+.tag.hot { background: rgba(255, 59, 48, 0.2); color: var(--neon-red); }
+.tag.trend { border: 1px solid var(--accent); color: var(--accent); }
 
-/* Market Center */
+/* 中间区域 */
 .market-center { flex: 1; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
-.market-dash, .sector-panel { padding: 16px; min-height: 150px; flex: 1; }
-.dash-title, .panel-head { font-size: 11px; color: var(--text-sub); font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 5px; }
-.index-row { display: flex; justify-content: space-between; align-items: center; }
-.idx-val { font-size: 28px; font-weight: bold; }
-.breadth-chart { flex: 1; margin-left: 20px; }
-.breadth-bar { display: flex; height: 10px; background: #333; margin-bottom: 4px; border-radius: 5px; overflow: hidden; }
-.up-bar { background: var(--neon-red); color: black; font-size: 8px; display: flex; align-items: center; justify-content: center; }
-.down-bar { background: var(--neon-green); color: black; font-size: 8px; display: flex; align-items: center; justify-content: center; }
-.sector-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-.sector-row { display: flex; justify-content: space-between; font-size: 12px; background: rgba(255,255,255,0.02); padding: 6px; border-radius: 4px; }
-.sec-bar-box { flex: 1; height: 4px; background: #222; margin: 0 10px; border-radius: 2px; align-self: center; }
-.sec-bar { height: 100%; background: linear-gradient(90deg, #ff4d4f, #ff7875); }
+.market-dash, .sector-panel { padding: 16px; flex: 1; min-height: 160px; }
+.dash-title, .panel-head { font-size: 13px; color: var(--text-sub); font-weight: 600; margin-bottom: 12px; text-transform: uppercase; }
+.idx-val { font-size: 36px; font-weight: 800; letter-spacing: -1px; }
+.idx-change { font-size: 14px; margin-top: 4px; font-weight: 600; }
+.breadth-bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; display: flex; margin-top: 15px; }
+.up-bar { background: var(--neon-red); } .down-bar { background: var(--neon-green); }
+.sector-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
 
-/* Detail Deck */
-.detail-deck { width: 340px; }
-.stock-detail { height: 100%; display: flex; flex-direction: column; gap: 12px; }
-.stock-header { padding: 20px; }
-.sh-top { display: flex; justify-content: space-between; }
-.sh-name { font-size: 20px; font-weight: bold; }
-.close-btn { background: none; border: none; color: #666; cursor: pointer; }
-.sh-price { font-size: 28px; font-weight: bold; margin-top: 5px; }
-.tech-row { margin-top: 10px; display: flex; gap: 6px; }
-.tech-badge { font-size: 10px; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; color: var(--text-sub); }
-
-.star-view { height: 100%; display: flex; flex-direction: column; border: 1px solid var(--gold); box-shadow: 0 0 20px rgba(255, 215, 0, 0.1); }
-.star-header { background: linear-gradient(to right, rgba(255,215,0,0.1), transparent); padding: 20px; text-align: center; }
-.star-icon { font-size: 40px; margin-bottom: 10px; }
-.star-title { color: var(--gold); font-weight: bold; letter-spacing: 2px; margin-bottom: 5px; }
-.star-name { font-size: 24px; font-weight: bold; }
+/* 右侧详情 */
+.detail-deck { width: 360px; }
+.star-view { height: 100%; display: flex; flex-direction: column; }
+.star-header { padding: 30px 20px; text-align: center; border-bottom: var(--border); }
+.star-icon { font-size: 48px; margin-bottom: 10px; display: block; }
+.star-name { font-size: 28px; font-weight: 800; }
 .star-body { flex: 1; padding: 20px; overflow-y: auto; }
-
-.tech-dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; }
+.tech-dashboard { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; }
 .tech-item { text-align: center; }
-.ti-label { font-size: 10px; color: var(--text-sub); }
-.ti-val { font-size: 16px; font-weight: bold; }
-.ti-sub { font-size: 9px; color: var(--text-sub); margin-top: 2px; }
+.ti-label { font-size: 11px; color: var(--text-sub); }
+.ti-val { font-size: 16px; font-weight: 700; margin-top: 4px; }
+.gold-btn { width: 100%; background: var(--gold); color: black; border: none; padding: 16px; font-weight: 700; border-radius: 12px; font-size: 16px; cursor: pointer; }
+.ai-text { font-size: 14px; line-height: 1.6; color: #ddd; }
 
-.gold-btn { width: 100%; background: var(--gold); color: black; border: none; padding: 12px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-.gold-btn:disabled { opacity: 0.6; cursor: wait; }
+/* 📱 移动端适配 (Media Queries) */
+.mobile-nav, .mobile-header, .mobile-scan-btn { display: none; }
 
-.ai-box { flex: 1; display: flex; flex-direction: column; padding: 16px; }
-.ai-head { display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
-.ai-btn { background: var(--accent); color: white; border: none; padding: 4px 10px; border-radius: 2px; cursor: pointer; }
-.ai-body { flex: 1; overflow-y: auto; font-size: 12px; line-height: 1.6; }
+@media (max-width: 768px) {
+  .quant-os { padding: 0; padding-bottom: var(--nav-height); background: #000; }
+  .glass-panel { border-radius: 0; border: none; background: #000; border-bottom: 1px solid #222; }
+  
+  /* 隐藏电脑端不需要的 */
+  .brand-area { display: none; } 
+  .list-header { display: none; }
 
-.custom-scroll::-webkit-scrollbar { width: 4px; }
-.custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
-.empty-deck { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--text-sub); }
-.icon { font-size: 40px; }
+  /* 手机顶部 */
+  .mobile-header { display: flex; justify-content: space-between; align-items: center; height: 44px; padding: 0 16px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #222; padding-top: env(safe-area-inset-top); }
+  .mobile-header .brand-area { display: block; border: none; padding: 0; font-size: 16px; }
+  .connection-status { width: 8px; height: 8px; border-radius: 50%; background: #333; }
+  .connection-status.online { background: var(--neon-green); box-shadow: 0 0 5px var(--neon-green); }
+  
+  /* 布局改为单栏 */
+  .sidebar, .market-center, .detail-deck { width: 100%; height: 100%; overflow-y: auto; padding-top: 10px; }
+  
+  /* 手机端样式微调 */
+  .ticker-card { margin: 0 12px 10px; padding: 16px; }
+  .market-dash, .sector-panel { margin-bottom: 10px; min-height: auto; }
+  .panel-title-mobile { font-size: 20px; font-weight: 800; padding: 10px 16px; color: var(--text-main); }
+  
+  /* 悬浮扫描按钮 */
+  .mobile-scan-btn { display: block; position: fixed; bottom: 80px; right: 20px; background: var(--accent); color: white; border: none; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 15px rgba(10, 132, 255, 0.4); z-index: 50; }
+
+  /* 底部导航栏 */
+  .mobile-nav { display: flex; position: fixed; bottom: 0; left: 0; width: 100%; height: var(--nav-height); background: rgba(20,20,20,0.95); backdrop-filter: blur(20px); border-top: 1px solid #333; z-index: 100; padding-bottom: env(safe-area-inset-bottom); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #666; transition: 0.2s; }
+  .nav-item.active { color: var(--accent); }
+  .nav-icon { font-size: 20px; margin-bottom: 2px; }
+  .nav-text { font-size: 10px; font-weight: 500; }
+  
+  /* 详情页全屏覆盖 */
+  .stock-detail, .star-view { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 60; padding-top: env(safe-area-inset-top); padding-bottom: 80px; overflow-y: auto; }
+  .close-btn { font-size: 24px; padding: 10px; }
+}
 </style>
